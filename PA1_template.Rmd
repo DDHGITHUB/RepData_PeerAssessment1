@@ -1,20 +1,123 @@
 # Reproducible Research: Peer Assessment 1
 
 
+
 ## Loading and preprocessing the data
+### load DF
+```{r}
+DF <- read.csv("activity.csv")
+```
 
-
+### clean date
+```{r CLEANDATE}
+DF$DateGood<-as.Date(DF$date)
+```
 
 ## What is mean total number of steps taken per day?
+### Sum steps per day
+```{r Sumstepsperday}
+DailySteps <- as.vector(by(DF$steps, DF$DateGood, function(x) sum(x, na.rm = TRUE)))
+```
 
+### make the histogram
+```{r make the histogram}
+hist(DailySteps, breaks = 20, xlab = "Daily steps", col = "red", main = "Freq of Daily Steps")
+```
+
+### mean + median
+```{r mean + median}
+MeanMedianSteps<-data.frame(mean = mean(DailySteps), median = median(DailySteps))
+MeanMedianSteps
+```
 
 
 ## What is the average daily activity pattern?
 
+### Calc the ave steps + 5MIN intervals
+```{r Calc the ave steps + 5MIN intervals }
+AveStepsTaken <- as.vector(by(DF$steps, DF$interval, function(x) mean(x, na.rm = TRUE)))
+MinuteIntervals <- levels(as.factor(DF$interval))
+```
 
+### make the plot
+```{r ### make the plot}
+plot(MinuteIntervals, AveStepsTaken, type = "l", col="red",xlab = "5 min Interval number", ylab = "Ave number daily steps", main = "5-minute interval + average number steps taken, averaged across all days")
+```
+
+### find interval with max steps
+```{r find interval with max steps}
+MaxInterval<-as.numeric(MinuteIntervals[which.max(AveStepsTaken)] ) ; MaxInterval
+```
+### Combine ave steps and 5minintervals
+```{r Combine ave steps and 5minintervals}
+DFX<-data.frame(MinuteIntervals,AveStepsTaken)
+```
+### NUmber steps in MaxInterval
+```{r NUmber steps in MaxInterval}
+DFX[(MinuteIntervals==MaxInterval),]
+```
 
 ## Imputing missing values
+
+### for intervals with NA I am going to replace NA with the average steps for that 5-minute interval
+### Calc # rows with NA
+```{r Calc # rows with NA}
+NaRowsCount<-nrow(DF[is.na(DF$steps),]) ; NaRowsCount
+```
+
+### Create a new data set with missing data replaced, i call it DFClean
+### Add the calculated ave steps for 5MinIntervals through left-join
+```{r Add the calculated ave steps for 5MinIntervals through left-join}
+DFClean<-merge(x = DF, y = DFX, by.x = "interval", by.y = "MinuteIntervals", all.x=TRUE)
+```
+
+### Now pick ave steps for steps = NA
+```{r Now pick ave steps for steps is NA }
+DFClean$CleanSteps<-ifelse(is.na(DFClean$steps)== T,DFClean$AveStepsTaken,DFClean$steps)
+```
+
+### make the cleaned hist
+
+### Sum clean steps per day
+```{r Sum clean steps per day}
+CleanDailySteps <- as.vector(by(DFClean$CleanSteps, DFClean$DateGood, function(x) sum(x, na.rm = TRUE)))
+```
+### make the cleaned hist
+```{r make the cleaned hist}
+hist(CleanDailySteps, breaks = 20, xlab = "Daily steps", col = "red", main = "Freq of Cleaned Daily Steps")
+```
+
+### clean mean + median
+```{r clean mean + median}
+CleanMeanMedianSteps<-data.frame(CleanMean = mean(CleanDailySteps), Cleanmedian = median(CleanDailySteps))
+CleanMeanMedianSteps
+```
+
+### Total number of steps has increased since we replaced NAs with the average for that interval.
+### Appararantly this method created a mean and median that is exactly the same, wonder if this is because we put the averages in and so it trended towards that
 
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+### Add weekday and then what type of day that is
+```{r  Add weekday and then what type of day that is}
+DFClean <- cbind(DFClean, DayType = factor(weekdays(DFClean$DateGood) == "Saturday" | weekdays(DFClean$DateGood) == "Sunday", labels = c("weekday", "weekend")))
+```
+
+### make the plot
+```{r make the plot}
+par(mfrow = c(2, 1))
+
+
+means.weekday <- as.vector(by(DFClean[DFClean$DayType == "weekday",]$CleanSteps, DFClean[DFClean$DayType == "weekday",]$interval, mean))
+means.weekend <- as.vector(by(DFClean[DFClean$DayType == "weekend",]$CleanSteps, DFClean[DFClean$DayType == "weekend",]$interval, mean))
+
+plot(MinuteIntervals, means.weekday, type = "l",ylim=c(0,250), xlab = "Interval", ylab = "Mean daily steps", main = "Weekdays")
+plot(MinuteIntervals, means.weekend, type = "l",ylim=c(0,250), xlab = "Interval", ylab = "Mean daily steps", main = "Weekends")
+```
+
+
+
+
+
